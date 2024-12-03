@@ -1,58 +1,38 @@
-from pydub import AudioSegment
-import argparse
+import sys
+import librosa
+import soundfile as sf
 
-class WavTempoEditor:
-    def __init__(self, input_file, output_file, speed):
-        """
-        Initialize the WavTempoEditor with input and output file paths and speed factor.
+def change_tempo(input_file, output_file, tempo):
+    """
+    Change the tempo of an audio file without changing the pitch.
+    
+    :param input_file: Path to the input audio file
+    :param output_file: Path to save the output audio file
+    :param tempo: Tempo adjustment factor (e.g., 1.5 for 150% tempo)
+    """
+    # Load the audio file
+    audio, sample_rate = librosa.load(input_file, sr=None)
 
-        Parameters:
-        input_file (str): Path to the input .wav file.
-        output_file (str): Path to save the output .wav file.
-        speed (float): Speed factor to adjust tempo. Values > 1 increase tempo, < 1 decrease tempo.
-        """
-        self.input_file = input_file
-        self.output_file = output_file
-        self.speed = speed
+    # Adjust tempo
+    adjusted_audio = librosa.effects.time_stretch(audio, rate=tempo)
 
-    def load_audio(self):
-        """Load the .wav file."""
-        return AudioSegment.from_wav(self.input_file)
+    # Save the modified audio to a new file
+    sf.write(output_file, adjusted_audio, sample_rate)
+    print(f"Tempo-adjusted audio saved to: {output_file}")
 
-    def change_tempo(self, audio):
-        """
-        Change the tempo of the loaded .wav file without changing the pitch.
+def main():
+    if len(sys.argv) != 4:
+        print("Usage: python change_tempo.py <input_file> <output_file> <tempo_factor>")
+        sys.exit(1)
 
-        Parameters:
-        audio (AudioSegment): The original audio segment.
+    input_file = sys.argv[1]
+    output_file = sys.argv[2]
+    tempo = float(sys.argv[3])
 
-        Returns:
-        AudioSegment: The modified audio segment with adjusted tempo.
-        """
-        # Adjust the playback speed by changing frame rate
-        new_frame_rate = int(audio.frame_rate * self.speed)
-        modified_audio = audio._spawn(audio.raw_data, overrides={'frame_rate': new_frame_rate})
-        return modified_audio.set_frame_rate(audio.frame_rate)
-
-    def save_audio(self, audio):
-        """Save the modified audio to the output file."""
-        audio.export(self.output_file, format="wav")
-
-    def process_audio(self):
-        """Load, modify, and save the .wav file with the new tempo."""
-        audio = self.load_audio()
-        modified_audio = self.change_tempo(audio)
-        self.save_audio(modified_audio)
-
+    try:
+        change_tempo(input_file, output_file, tempo)
+    except Exception as e:
+        print(f"An error occurred: {e}")
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Edit the tempo of a .wav file.")
-    parser.add_argument("input_file", type=str, help="Path to the input .wav file.")
-    parser.add_argument("output_file", type=str, help="Path to save the output .wav file.")
-    parser.add_argument("speed", type=float, help="Speed factor for tempo adjustment (e.g., 1.5 for 50% faster).")
-
-    args = parser.parse_args()
-
-    editor = WavTempoEditor(args.input_file, args.output_file, args.speed)
-    editor.process_audio()
-    print(f"Tempo adjusted and saved to {args.output_file}")
+    main()
